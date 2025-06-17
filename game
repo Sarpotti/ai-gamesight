@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Lil Bro's Sigma Game Zone</title>
+<style>
+  body {
+    margin: 0;
+    background: #121212;
+    color: #eee;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+  }
+  header {
+    padding: 1.5rem 0;
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+  }
+  nav {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  button {
+    background: #1e90ff;
+    border: none;
+    padding: 0.7rem 1.3rem;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background 0.3s ease;
+  }
+  button:hover {
+    background: #0d5ecf;
+  }
+  #gameContainer {
+    background: #222;
+    border-radius: 8px;
+    width: 320px;
+    height: 480px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  canvas {
+    background: #111;
+    border-radius: 8px;
+    display: block;
+  }
+  #instructions {
+    position: absolute;
+    bottom: 8px;
+    color: #ccc;
+    font-size: 0.8rem;
+    user-select: none;
+  }
+</style>
+</head>
+<body>
+
+<header>Lil Bro's Sigma Game Zone</header>
+
+<nav>
+  <button onclick="startGame(1)">Pong</button>
+  <button onclick="startGame(2)">Catch the Square</button>
+  <button onclick="startGame(3)">Reaction Test</button>
+</nav>
+
+<div id="gameContainer">
+  <canvas id="gameCanvas" width="320" height="480"></canvas>
+  <div id="instructions"></div>
+</div>
+
+<script>
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+  const instructions = document.getElementById('instructions');
+  let gameId = 0;
+  let animationId;
+  let gameState = {};
+
+  function clearCanvas() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+  // ------------------ GAME 1: Pong --------------------
+  function gamePong() {
+    let paddleWidth = 80;
+    let paddleHeight = 12;
+    let paddleX = (canvas.width - paddleWidth) / 2;
+
+    let ballRadius = 8;
+    let x = canvas.width / 2;
+    let y = canvas.height - 30;
+    let dx = 3;
+    let dy = -3;
+
+    let rightPressed = false;
+    let leftPressed = false;
+
+    function keyDownHandler(e) {
+      if (e.key === "Right" || e.key === "ArrowRight") rightPressed = true;
+      else if (e.key === "Left" || e.key === "ArrowLeft") leftPressed = true;
+    }
+    function keyUpHandler(e) {
+      if (e.key === "Right" || e.key === "ArrowRight") rightPressed = false;
+      else if (e.key === "Left" || e.key === "ArrowLeft") leftPressed = false;
+    }
+
+    document.addEventListener("keydown", keyDownHandler);
+    document.addEventListener("keyup", keyUpHandler);
+
+    function drawPaddle() {
+      ctx.fillStyle = "#1e90ff";
+      ctx.fillRect(paddleX, canvas.height - paddleHeight - 10, paddleWidth, paddleHeight);
+    }
+
+    function drawBall() {
+      ctx.beginPath();
+      ctx.arc(x, y, ballRadius, 0, Math.PI * 2);
+      ctx.fillStyle = "#ff4757";
+      ctx.fill();
+      ctx.closePath();
+    }
+
+    function draw() {
+      clearCanvas();
+
+      drawBall();
+      drawPaddle();
+
+      if (x + dx > canvas.width - ballRadius || x + dx < ballRadius) dx = -dx;
+      if (y + dy < ballRadius) dy = -dy;
+      else if (y + dy > canvas.height - ballRadius - paddleHeight - 10) {
+        if (x > paddleX && x < paddleX + paddleWidth) dy = -dy;
+        else {
+          // Game Over - reset ball position
+          x = canvas.width / 2;
+          y = canvas.height - 30;
+          dx = 3;
+          dy = -3;
+        }
+      }
+
+      if (rightPressed && paddleX < canvas.width - paddleWidth) paddleX += 7;
+      else if (leftPressed && paddleX > 0) paddleX -= 7;
+
+      x += dx;
+      y += dy;
+
+      animationId = requestAnimationFrame(draw);
+    }
+
+    instructions.textContent = "Use ← and → arrows to move paddle. Keep the ball bouncing.";
+    draw();
+
+    // Return cleanup function
+    return () => {
+      document.removeEventListener("keydown", keyDownHandler);
+      document.removeEventListener("keyup", keyUpHandler);
+      cancelAnimationFrame(animationId);
+    };
+  }
+
+  // ------------------ GAME 2: Catch the Square --------------------
+  function gameCatchSquare() {
+    let squareSize = 40;
+    let squareX = Math.random() * (canvas.width - squareSize);
+    let squareY = Math.random() * (canvas.height - squareSize - 30);
+    let score = 0;
+
+    function drawSquare() {
+      ctx.fillStyle = "#ffa502";
+      ctx.fillRect(squareX, squareY, squareSize, squareSize);
+    }
+
+    function drawScore() {
+      ctx.fillStyle = "#eee";
+      ctx.font = "20px Arial";
+      ctx.fillText("Score: " + score, 10, 30);
+    }
+
+    function newSquare() {
+      squareX = Math.random() * (canvas.width - squareSize);
+      squareY = Math.random() * (canvas.height - squareSize - 30);
+    }
+
+    function clickHandler(e) {
+      const rect = canvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+
+      if (
+        clickX >= squareX &&
+        clickX <= squareX + squareSize &&
+        clickY >= squareY &&
+        clickY <= squareY + squareSize
+      ) {
+        score++;
+        newSquare();
+      }
+    }
+
+    canvas.addEventListener("click", clickHandler);
+
+    function draw() {
+      clearCanvas();
+      drawSquare();
+      drawScore();
+      animationId = requestAnimationFrame(draw);
+    }
+
+    instructions.textContent = "Click the orange square to score points!";
+
+    draw();
+
+    return () => {
+      canvas.removeEventListener("click", clickHandler);
+      cancelAnimationFrame(animationId);
+    };
+  }
+
+  // ------------------ GAME 3: Reaction Test --------------------
+  function gameReactionTest() {
+    let waiting = true;
+    let startTime = 0;
+    let reactionTime = 0;
+
+    function drawMessage(text, color="#eee") {
+      clearCanvas();
+      ctx.fillStyle = color;
+      ctx.font = "28px Arial";
+      ctx.textAlign = "center";
+      ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+    }
+
+    function waitRandom() {
+      drawMessage("Get ready...", "#aaa");
+      let wait = Math.random() * 3000 + 1000; // 1-4 seconds
+      setTimeout(() => {
+        waiting = false;
+        startTime = performance.now();
+        drawMessage("CLICK NOW!", "#28a745");
+      }, wait);
+    }
+
+    function clickHandler() {
+      if (waiting) {
+        drawMessage("Too soon! Wait for green.", "#ff4757");
+        setTimeout(waitRandom, 1500);
+      } else {
+        reactionTime = performance.now() - startTime;
+        drawMessage("Your time: " + reactionTime.toFixed(0) + " ms", "#1e90ff");
+        waiting = true;
+        setTimeout(waitRandom, 2000);
+      }
+    }
+
+    canvas.addEventListener("click", clickHandler);
+
+    waitRandom();
+
+    return () => {
+      canvas.removeEventListener("click", clickHandler);
+    };
+  }
+
+  // ------------------ Game manager --------------------
+  let cleanup = null;
+
+  function startGame(id) {
+    if (cleanup) cleanup();
+    gameId = id;
+    switch (id) {
+      case 1:
+        cleanup = gamePong();
+        break;
+      case 2:
+        cleanup = gameCatchSquare();
+        break;
+      case 3:
+        cleanup = gameReactionTest();
+        break;
+    }
+  }
+
+  // Start first game by default
+  startGame(1);
+</script>
+
+</body>
+</html>
